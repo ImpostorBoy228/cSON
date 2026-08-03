@@ -1,5 +1,0 @@
-; leading comment
-garbage here
-{
-    "k": "v" ; trailing
-}

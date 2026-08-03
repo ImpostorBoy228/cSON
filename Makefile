@@ -2,14 +2,18 @@ CC      ?= cc
 CFLAGS  ?= -Wall -Wextra -std=c23 -O2
 SRC     := src/cSON.c
 BIN     := cSON
+TEST    := tests/test
 
 $(BIN): $(SRC)
 	$(CC) $(CFLAGS) -o $@ $^
 
-clean:
-	rm -f $(BIN)
+$(TEST): tests/test.c src/cSON.h
+	$(CC) $(CFLAGS) -o $@ $<
 
-tests: $(BIN)
-	sh tests/run.sh
+clean:
+	rm -f $(BIN) $(TEST)
+
+tests: $(TEST)
+	./$(TEST)
 
 .PHONY: clean tests
