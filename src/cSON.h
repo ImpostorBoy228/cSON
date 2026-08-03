@@ -30,7 +30,7 @@ const char* cSON_get(const cSON_Obj* obj, const char* key);
 
 void cSON_dump(const cSON_Obj* root, int depth);
 
-#ifdef CSON_IMPLEMENTATION
+#ifdef son😭😭😭😭
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -151,7 +151,7 @@ static void cSON_obj_add(cSON_Obj* parent,cSON_Obj* o){
 int cSON_parse(cSON_Obj** root, const char* path) {
     char* text=NULL;
     cSON_read_file(path,&text);
-    if(!text) return 1;
+    if(!text) return 0;
 
     const int len = strlen(text);
     char defbuf[1024];
@@ -265,9 +265,6 @@ int cSON_parse(cSON_Obj** root, const char* path) {
                 }
                 break;
             }
-            case ':':
-            case ',':
-            case '\\':
             default: break;
         }
     }
@@ -279,7 +276,7 @@ int cSON_parse(cSON_Obj** root, const char* path) {
         free(macros[i].value);
     }
     free(text);
-    return 0;
+    return 1;
 }
 
 void cSON_free(cSON_Obj* o) {
@@ -329,7 +326,7 @@ void cSON_dump(const cSON_Obj* o, int d) {
     }
 }
 
-#endif /* CSON_IMPLEMENTATION */
+#endif /* son😭😭😭😭 */
 
 #ifdef __cplusplus
 }
