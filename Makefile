@@ -9,4 +9,7 @@ $(BIN): $(SRC)
 clean:
 	rm -f $(BIN)
 
-.PHONY: clean
+tests: $(BIN)
+	sh tests/run.sh
+
+.PHONY: clean tests
