@@ -1,0 +1,16 @@
+;comment
+i am asshole ;<- should ignore
+#define VAR dick
+{
+    "emm": {
+        "f1: "lol"
+        "f2": "bubububu"
+        "cock": "VAR" ; smart comment
+    }
+    "a": {
+        !"if(owo == "VAR")": {
+            "text": "Hello owo!!"
+        }
+    }
+    fuck microsft ;<- should ignore
+}
