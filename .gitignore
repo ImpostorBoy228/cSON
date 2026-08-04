@@ -1,4 +1,6 @@
-cSON
+example
+SonCompiler
+SONEVAL.ass
 tests/test
 .gen-soneval
 *.swp

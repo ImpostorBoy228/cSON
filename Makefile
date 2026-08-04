@@ -1,9 +1,9 @@
 CC      ?= cc
 CFLAGS  ?= -Wall -Wextra -std=c2x -O2
-SRC     := src/cSON.c
+SRC     := src/example.c
 HDR     := src/cSON.h
 COMPILER := src/SonCompiler.c
-BIN     := cSON
+BIN     := example
 SON     := emmm.son
 EVAL    := SONEVAL.ass
 TEST    := tests/test
@@ -16,7 +16,7 @@ $(EVAL): $(COMPILER) $(HDR) $(SON)
 	rm -f .gen-soneval
 
 $(BIN): $(SRC) $(HDR) $(EVAL)
-	$(CC) $(CFLAGS) -o $@ $(SRC)
+	$(CC) $(CFLAGS) -I. -o $@ $(SRC)
 
 SonCompiler: $(COMPILER) $(HDR)
 	$(CC) $(CFLAGS) -o $@ $(COMPILER)
