@@ -1,2 +1,5 @@
 cSON
 tests/test
+SONEVAL.ass
+.gen-soneval
+*.swp

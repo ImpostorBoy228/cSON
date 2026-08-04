@@ -8,7 +8,9 @@ extern "C" {
 typedef enum {
     CSON_OBJECT,
     CSON_STRING,
-    CSON_IF
+    CSON_IF,
+    CSON_INLINE_C,
+    CSON_INLINE_ASM
 } cSON_Type;
 
 typedef struct cSON_Obj {
@@ -113,6 +115,16 @@ static int cSON_read_if_expr(const char* s,int i,char* out,size_t cap){
     out[n]='\0';return i;
 }
 
+static int cSON_read_inline(const char* s,int i,char* out,size_t cap){
+    size_t n=0;i++;
+    if(s[i]=='"')i++;
+    while(s[i]!='\0'&&n+1<cap){
+        if(s[i]=='"'||s[i]=='\n'){out[n]='\0';return i;}
+        out[n++]=s[i];i++;
+    }
+    out[n]='\0';return i;
+}
+
 static char* cSON_resolve(const char* s,const cSON_Macro* macros,uint16_t n){
     for(uint16_t i=0;i<n;i++)
         if(strcmp(s,macros[i].name)==0)return cSON_strdup(macros[i].value);
@@ -172,6 +184,7 @@ int cSON_parse(cSON_Obj** root, const char* path) {
     cSON_Obj* cur=NULL;
     cSON_Obj* ifopen=NULL;
     char* pending_key=NULL;
+    uint8_t pending_kind=0;
 
     for (int q=0;q<len;++q) {
         switch(text[q]){
@@ -241,6 +254,12 @@ int cSON_parse(cSON_Obj** root, const char* path) {
                 if (cur) cur = cur->parent;
                 break;
             case '!': {
+                if (text[q+1]=='!') {
+                    char buf[512];
+                    q = cSON_read_inline(text, q+1, buf, sizeof buf);
+                    pending_kind = (strcmp(buf,"__asm__")==0) ? CSON_INLINE_ASM : CSON_INLINE_C;
+                    break;
+                }
                 char buf[512];
                 q = cSON_read_if_expr(text, q+1, buf, sizeof buf);
                 cSON_Obj* o = cSON_obj_new();
@@ -264,6 +283,12 @@ int cSON_parse(cSON_Obj** root, const char* path) {
                     o->key = pending_key;
                     pending_key = NULL;
                     o->value = cSON_resolve(buf, macros, macroc);
+                    if (cur) cSON_obj_add(cur, o);
+                } else if (pending_kind) {
+                    cSON_Obj* o = cSON_obj_new();
+                    o->type = pending_kind;
+                    pending_kind = 0;
+                    o->value = cSON_resolve_all(buf, macros, macroc);
                     if (cur) cSON_obj_add(cur, o);
                 } else {
                     fprintf(stderr, "your son is fucked\n");
@@ -317,6 +342,12 @@ void cSON_dump(const cSON_Obj* o, int d) {
             if (c->child) cSON_dump(c->child, d+1);
             for(int i=0;i<d;i++)printf("  ");
             printf("}\n");
+            continue;
+        }
+        if(c->type == CSON_INLINE_C || c->type == CSON_INLINE_ASM){
+            printf("!!\"%s\": \"%s\"\n",
+                c->type == CSON_INLINE_C ? "__c__" : "__asm__",
+                c->value?c->value:"?");
             continue;
         }
         if(c->key)printf("%s: ",c->key);

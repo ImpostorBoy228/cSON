@@ -139,6 +139,109 @@ static void test_macro_if(void) {
     cSON_free(root);
 }
 
+static void test_inline_c(void) {
+    cSON_Obj* root = parse_ok("inline_c.son",
+        "#define VAR 998\n"
+        "{\n"
+        "    \"res\": {\n"
+        "        !!\"__c__\": \"int poo(){return VAR;}\"\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    const cSON_Obj* res = cSON_find(root, "res");
+    CHECK(res && res->type == CSON_OBJECT);
+    const cSON_Obj* in = res ? res->child : NULL;
+    CHECK(in && in->type == CSON_INLINE_C);
+    CHECK(in->key == NULL);
+    CHECK(in->value && strcmp(in->value, "int poo(){return 998;}") == 0);
+    cSON_free(root);
+}
+
+static void test_inline_asm(void) {
+    cSON_Obj* root = parse_ok("inline_asm.son",
+        "{\n"
+        "    \"x\": {\n"
+        "        !!\"__asm__\": \"nop\"\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    const cSON_Obj* x = cSON_find(root, "x");
+    const cSON_Obj* in = x ? x->child : NULL;
+    CHECK(in && in->type == CSON_INLINE_ASM);
+    CHECK(in->key == NULL);
+    CHECK(in->value && strcmp(in->value, "nop") == 0);
+    cSON_free(root);
+}
+
+static void test_brace_same_line(void) {
+    cSON_Obj* root = parse_ok("brace_same_line.son",
+        "{\"a\":{\"b\":\"v\"}}");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(a && a->type == CSON_OBJECT);
+    CHECK(cSON_get(a, "b") && strcmp(cSON_get(a, "b"), "v") == 0);
+    cSON_free(root);
+}
+
+static void test_brace_empty(void) {
+    cSON_Obj* root = parse_ok("brace_empty.son",
+        "{\"a\":{}}");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(a && a->type == CSON_OBJECT);
+    CHECK(a->child == NULL);
+    cSON_free(root);
+}
+
+static void test_brace_closing_newline(void) {
+    cSON_Obj* root = parse_ok("brace_closing_nl.son",
+        "{ \"a\": { \"b\": \"v\" }\n}");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(a && a->type == CSON_OBJECT);
+    CHECK(cSON_get(a, "b") && strcmp(cSON_get(a, "b"), "v") == 0);
+    cSON_free(root);
+}
+
+static void test_brace_blank_lines(void) {
+    cSON_Obj* root = parse_ok("brace_blank.son",
+        "{ \"a\": { \"b\": \"v\" }\n\n\n}\n\n\n");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(a && a->type == CSON_OBJECT);
+    CHECK(cSON_get(a, "b") && strcmp(cSON_get(a, "b"), "v") == 0);
+    cSON_free(root);
+}
+
+static void test_brace_adjacent_siblings(void) {
+    cSON_Obj* root = parse_ok("brace_sib.son",
+        "{\"a\":{\"b\":{\"c\":\"v\"}} \"x\":\"y\"}");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    const cSON_Obj* b = a ? cSON_find(a, "b") : NULL;
+    CHECK(b && b->type == CSON_OBJECT);
+    CHECK(cSON_get(b, "c") && strcmp(cSON_get(b, "c"), "v") == 0);
+    CHECK(cSON_get(root, "x") && strcmp(cSON_get(root, "x"), "y") == 0);
+    cSON_free(root);
+}
+
+static void test_crlf(void) {
+    cSON_Obj* root = parse_ok("crlf.son",
+        "{\r\n"
+        "    \"a\": \"bubububu\"\r\n"
+        "    \"c\": {\r\n"
+        "        \"d\": \"e\"\r\n"
+        "    }\r\n"
+        "}\r\n");
+    if (!root) return;
+    const char* v = cSON_get(root, "a");
+    CHECK(v && strcmp(v, "bubububu") == 0);
+    const cSON_Obj* c = cSON_find(root, "c");
+    CHECK(c && c->type == CSON_OBJECT);
+    CHECK(cSON_get(c, "d") && strcmp(cSON_get(c, "d"), "e") == 0);
+    cSON_free(root);
+}
+
 static char* read_file(const char* path) {
     FILE* f = fopen(path, "r");
     if (!f) return NULL;
@@ -257,6 +360,14 @@ int main(void) {
     test_orphan();
     test_macro();
     test_macro_if();
+    test_inline_c();
+    test_inline_asm();
+    test_brace_same_line();
+    test_brace_empty();
+    test_brace_closing_newline();
+    test_brace_blank_lines();
+    test_brace_adjacent_siblings();
+    test_crlf();
     test_apply_if_unfold();
     test_apply_if_delete();
     test_apply_if_out_of_range();

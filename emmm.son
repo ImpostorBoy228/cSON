@@ -5,6 +5,7 @@ i am asshole ;<- should ignore
     "emm": {
         "f1": "lol"
         "f2": "bubububu"
+	"important code result": { !!"__c__": "int poo(){for(int d=0; d<999; d++){if (d==998) return d;}return 0;}" }
         "cock": "VAR" ; smart comment
     }
     "a": {
