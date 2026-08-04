@@ -30,6 +30,10 @@ const char* cSON_get(const cSON_Obj* obj, const char* key);
 
 void cSON_dump(const cSON_Obj* root, int depth);
 
+void cSON_apply_if(cSON_Obj* root, int index, int value);
+
+int cSON_gen_evalpoint(const char* out_path, const char* son_path);
+
 #ifdef son😭😭😭😭
 
 #include <stdio.h>
@@ -64,8 +68,9 @@ static void cSON_read_file(const char* path, char** out){
     *out=buffer;
     fclose(file);
 }
+static int cSON_write_file(const char* path,char* in){if(path==NULL||in==NULL)return 0;FILE* assfile = fopen(path,"w");if(assfile==NULL)return 0;fputs(in,assfile);fclose(assfile);return 1;}
 
-static char* cSON_strdup(const char *s){
+static char* cSON_strdup(const char* s){
     size_t n=strlen(s)+1;
     char* p=malloc(n);
     if(p) memcpy(p,s,n);
@@ -320,10 +325,143 @@ void cSON_dump(const cSON_Obj* o, int d) {
             cSON_dump(c,d+1);
             for(int i=0;i<d;i++)printf("  ");
             printf("}\n");
-        }else{
+        } else{
             printf("\"%s\"\n",c->value?c->value:"?");
         }
     }
+}
+
+static cSON_Obj* cSON_if_by_index(cSON_Obj* o, int* counter, int target) {
+    if (!o) return NULL;
+    for (cSON_Obj* c = o->child; c; c = c->next) {
+        if (c->type == CSON_IF) {
+            if (*counter == target) return c;
+            (*counter)++;
+        }
+        if (c->child) {
+            cSON_Obj* f = cSON_if_by_index(c, counter, target);
+            if (f) return f;
+        }
+    }
+    return NULL;
+}
+
+void cSON_apply_if(cSON_Obj* root, int index, int value) {
+    if (!root || index < 0) return;
+    int counter = 0;
+    cSON_Obj* c = cSON_if_by_index(root, &counter, index);
+    if (!c) return;
+    cSON_Obj* parent = c->parent;
+    if (!parent) return;
+
+    cSON_Obj* prev = NULL;
+    for (cSON_Obj* p = parent->child; p && p != c; p = p->next) prev = p;
+    if (prev) prev->next = c->next;
+    else parent->child = c->next;
+
+    if (value != 0) {
+        cSON_Obj* body = c->child;
+        if (body && body->child) {
+            cSON_Obj* last = body->child;
+            while (last->next) last = last->next;
+            if (prev) prev->next = body->child;
+            else parent->child = body->child;
+            last->next = c->next;
+            for (cSON_Obj* b = body->child; b; b = b->next) b->parent = parent;
+            body->child = NULL;
+        }
+        cSON_free(body);
+        c->child = NULL;
+        cSON_free(c);
+    } else {
+        cSON_free(c);
+    }
+}
+
+typedef struct {
+    int index;
+    char* value;
+} cSON_IFPair;
+
+static void cSON_collect_ifs(cSON_Obj* o, cSON_IFPair** out, int* count, int* cap) {
+    for (cSON_Obj* c = o->child; c; c = c->next) {
+        if (c->type == CSON_IF) {
+            if (*count == *cap) {
+                *cap = *cap ? *cap * 2 : 16;
+                *out = realloc(*out, (size_t)*cap * sizeof **out);
+            }
+            (*out)[*count].index = *count;
+            (*out)[*count].value = c->value ? cSON_strdup(c->value) : NULL;
+            (*count)++;
+        }
+        if (c->child) cSON_collect_ifs(c, out, count, cap);
+    }
+}
+
+static void cSON_guard_name(const char* path, char* out, size_t cap) {
+    const char* base = strrchr(path, '/');
+    base = base ? base + 1 : path;
+    size_t n = 0;
+    for (const char* p = base; *p && n + 1 < cap; p++) {
+        char ch = *p;
+        if (ch >= 'a' && ch <= 'z') ch = (char)(ch - 'a' + 'A');
+        else if (!((ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9'))) ch = '_';
+        out[n++] = ch;
+    }
+    out[n] = '\0';
+}
+
+static void cSON_escape_cstr(const char* in, char* out, size_t cap) {
+    size_t n = 0;
+    for (const char* p = in; *p && n + 2 < cap; p++) {
+        if (*p == '"') { out[n++] = '\\'; out[n++] = '"'; }
+        else if (*p == '\\') { out[n++] = '\\'; out[n++] = '\\'; }
+        else out[n++] = *p;
+    }
+    out[n] = '\0';
+}
+
+int cSON_gen_evalpoint(const char* out_path, const char* son_path) {
+    if (!out_path || !son_path) return 0;
+    cSON_Obj* root = NULL;
+    if (!cSON_parse(&root, son_path) || !root) return 0;
+
+    cSON_IFPair* pairs = NULL;
+    int count = 0, cap = 0;
+    cSON_collect_ifs(root, &pairs, &count, &cap);
+
+    char guard[128];
+    cSON_guard_name(out_path, guard, sizeof guard);
+    char son[1024];
+    cSON_escape_cstr(son_path, son, sizeof son);
+
+    FILE* f = fopen(out_path, "w");
+    if (!f) {
+        for (int i = 0; i < count; i++) free(pairs[i].value);
+        free(pairs);
+        cSON_free(root);
+        return 0;
+    }
+
+    fprintf(f, "#ifndef %s\n#define %s\n\n#define cSON_evalpoint() ({ \\\n", guard, guard);
+    fprintf(f, "    static cSON_Obj* _son_root = NULL; \\\n");
+    fprintf(f, "    if (!_son_root) cSON_parse(&_son_root, \"%s\"); \\\n", son);
+    for (int i = count - 1; i >= 0; i--) {
+        const char* cond = pairs[i].value ? pairs[i].value : "0";
+        fprintf(f, "    %s { \\\n", cond);
+        fprintf(f, "        cSON_apply_if(_son_root, %d, 1); \\\n", pairs[i].index);
+        fprintf(f, "    } else { \\\n");
+        fprintf(f, "        cSON_apply_if(_son_root, %d, 0); \\\n", pairs[i].index);
+        fprintf(f, "    } \\\n");
+    }
+    fprintf(f, "    _son_root; \\\n");
+    fprintf(f, "})\n\n#endif /* %s */\n", guard);
+
+    fclose(f);
+    for (int i = 0; i < count; i++) free(pairs[i].value);
+    free(pairs);
+    cSON_free(root);
+    return 1;
 }
 
 #endif /* son😭😭😭😭 */

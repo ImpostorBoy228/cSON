@@ -3,17 +3,16 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include "../SONEVAL.ass"
 
 int main(int argc, char* argv[]) {
-    cSON_Obj* root = NULL;
-    if (!cSON_parse(&root, argc > 1 ? argv[1] : "emmm.son")) {
-        fprintf(stderr, "FUCK!\n");
-        goto naxyi;
+    if (argc >= 4 && strcmp(argv[1], "--gen-evalpoint") == 0) {
+        return cSON_gen_evalpoint(argv[2], argv[3]) ? 0 : 1;
     }
-    cSON_dump(root, 0);
-    cSON_free(root);
+    char* owo = "dick";
+    cSON_Obj* tree = cSON_evalpoint();
+    cSON_dump(tree, 0);
+    cSON_free(tree);
     return 0;
-naxyi:
-    if (root) cSON_free(root);
-    return 666;
 }

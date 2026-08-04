@@ -11,6 +11,7 @@ i am asshole ;<- should ignore
         !"if(owo == "VAR")": {
             "text": "Hello owo!!"
         }
+        !"if(1)": {"poop.txt": "microsoft"}
     }
     fuck microsft ;<- should ignore
 }
