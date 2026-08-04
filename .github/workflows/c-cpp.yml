@@ -15,5 +15,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: make
       run: make
+    - name: gen eval
+      run: ./cSON --gen-evalpoint SONEVAL.ass emmm.son
     - name: make tests
       run: make tests
