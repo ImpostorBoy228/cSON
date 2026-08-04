@@ -30,6 +30,9 @@ It is important to write code in `char* function()`
 ```
 Only this syntax supported. one define at one string. no comments at this string.
 
+6. vim syntax highlighting. install:
+   `mkdir -p ~/.vim/syntax && cp son.vim ~/.vim/syntax/son.vim`, then in `~/.vimrc`: `autocmd BufNewFile,BufRead *.son setfiletype son`
+
 ### full .son file example
 ```son
 ;comment
