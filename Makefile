@@ -1,5 +1,5 @@
 CC      ?= cc
-CFLAGS  ?= -Wall -Wextra -std=c23 -O2
+CFLAGS  ?= -Wall -Wextra -std=c2x -O2
 SRC     := src/cSON.c
 BIN     := cSON
 TEST    := tests/test
