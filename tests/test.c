@@ -141,10 +141,9 @@ static void test_macro_if(void) {
 
 static void test_inline_c(void) {
     cSON_Obj* root = parse_ok("inline_c.son",
-        "#define VAR 998\n"
         "{\n"
         "    \"res\": {\n"
-        "        !!\"__c__\": \"int poo(){return VAR;}\"\n"
+        "        !!\"__c__\": \"char* poo(){return \\\"998\\\";}\"\n"
         "    }\n"
         "}\n");
     if (!root) return;
@@ -153,7 +152,7 @@ static void test_inline_c(void) {
     const cSON_Obj* in = res ? res->child : NULL;
     CHECK(in && in->type == CSON_INLINE_C);
     CHECK(in->key == NULL);
-    CHECK(in->value && strcmp(in->value, "int poo(){return 998;}") == 0);
+    CHECK(in->value && strcmp(in->value, "char* poo(){return \"998\";}") == 0);
     cSON_free(root);
 }
 
@@ -161,7 +160,7 @@ static void test_inline_asm(void) {
     cSON_Obj* root = parse_ok("inline_asm.son",
         "{\n"
         "    \"x\": {\n"
-        "        !!\"__asm__\": \"nop\"\n"
+        "        !!\"__asm__\": \"char* ares(){return \\\"42\\\";}\"\n"
         "    }\n"
         "}\n");
     if (!root) return;
@@ -169,7 +168,7 @@ static void test_inline_asm(void) {
     const cSON_Obj* in = x ? x->child : NULL;
     CHECK(in && in->type == CSON_INLINE_ASM);
     CHECK(in->key == NULL);
-    CHECK(in->value && strcmp(in->value, "nop") == 0);
+    CHECK(in->value && strcmp(in->value, "char* ares(){return \"42\";}") == 0);
     cSON_free(root);
 }
 
@@ -313,10 +312,95 @@ static void test_apply_if_out_of_range(void) {
     cSON_free(root);
 }
 
+static void test_if_siblings(void) {
+    cSON_Obj* root = parse_ok("if_siblings.son",
+        "{\n"
+        "    \"a\": {\n"
+        "        !\"if(x == 1)\": {\n"
+        "            \"b\": \"v\"\n"
+        "        }\n"
+        "        !\"if(y == 2)\": {\n"
+        "            \"c\": \"w\"\n"
+        "        }\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(a != NULL);
+    int ifc = 0;
+    for (const cSON_Obj* c = a ? a->child : NULL; c; c = c->next)
+        if (c->type == CSON_IF) ifc++;
+    CHECK(ifc == 2);
+    cSON_free(root);
+}
+
+static void test_if_siblings_apply(void) {
+    cSON_Obj* root = parse_ok("if_sib_apply.son",
+        "{\n"
+        "    \"a\": {\n"
+        "        !\"if(x == 1)\": {\n"
+        "            \"b\": \"v\"\n"
+        "        }\n"
+        "        !\"if(y == 2)\": {\n"
+        "            \"c\": \"w\"\n"
+        "        }\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    cSON_apply_if(root, 1, 1);
+    cSON_apply_if(root, 0, 1);
+    const cSON_Obj* a = cSON_find(root, "a");
+    CHECK(cSON_get(a, "b") && strcmp(cSON_get(a, "b"), "v") == 0);
+    CHECK(cSON_get(a, "c") && strcmp(cSON_get(a, "c"), "w") == 0);
+    cSON_free(root);
+}
+
+static void test_apply_inline_collapse(void) {
+    cSON_Obj* root = parse_ok("inline_collapse.son",
+        "{\n"
+        "    \"res\": {\n"
+        "        !!\"__c__\": \"char* poo(){return \\\"998\\\";}\"\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    cSON_apply_inline(root, 0, "998");
+    root = cSON_collapse_inlines(root);
+    CHECK(cSON_get(root, "res") && strcmp(cSON_get(root, "res"), "998") == 0);
+    const cSON_Obj* res = cSON_find(root, "res");
+    CHECK(res && res->type == CSON_STRING);
+    cSON_free(root);
+}
+
+static void test_apply_inline_no_collapse(void) {
+    cSON_Obj* root = parse_ok("inline_no_collapse.son",
+        "{\n"
+        "    \"res\": {\n"
+        "        !!\"__c__\": \"char* poo(){return \\\"998\\\";}\"\n"
+        "        \"x\": \"y\"\n"
+        "    }\n"
+        "}\n");
+    if (!root) return;
+    cSON_apply_inline(root, 0, "998");
+    root = cSON_collapse_inlines(root);
+    const cSON_Obj* res = cSON_find(root, "res");
+    CHECK(res && res->type == CSON_OBJECT);
+    CHECK(cSON_get(root, "res") == NULL);
+    const cSON_Obj* in = res ? res->child : NULL;
+    CHECK(in && in->type == CSON_INLINE_C);
+    CHECK(in->value && strcmp(in->value, "998") == 0);
+    cSON_free(root);
+}
+
 static void test_gen_evalpoint(void) {
     const char* son = write_fixture("gen.son",
         "#define VAR dick\n"
         "{\n"
+        "    \"important code result\": {\n"
+        "        !!\"__c__\": \"char* poo(){static char _b[32]; for(int d=0; d<999; d++){if (d==998){snprintf(_b,sizeof _b,\\\"%d\\\",d); return _b;}} return \\\"0\\\";}\"\n"
+        "    }\n"
+        "    \"assembler result\": {\n"
+        "        !!\"__asm__\": \"char* ares(){int v; __asm__ volatile (\\\"mov $42, %0\\\" : \\\"=r\\\"(v)); static char _b[16]; snprintf(_b,sizeof _b,\\\"%d\\\",v); return _b;}\"\n"
+        "    }\n"
         "    \"a\": {\n"
         "        !\"if(owo == \"VAR\")\": {\n"
         "            \"text\": \"Hello owo!!\"\n"
@@ -333,8 +417,69 @@ static void test_gen_evalpoint(void) {
     CHECK(strstr(buf, "#define cSON_evalpoint()") != NULL);
     CHECK(strstr(buf, "if(owo == \"dick\")") != NULL);
     CHECK(strstr(buf, "cSON_apply_if(_son_root, 0, 1)") != NULL);
+    CHECK(strstr(buf, "char* poo()") != NULL);
+    CHECK(strstr(buf, "char* ares()") != NULL);
+    CHECK(strstr(buf, "cSON_apply_inline(_son_root, 0, poo())") != NULL);
+    CHECK(strstr(buf, "cSON_apply_inline(_son_root, 1, ares())") != NULL);
+    CHECK(strstr(buf, "cSON_collapse_inlines(_son_root)") != NULL);
+    CHECK(strstr(buf, "if (!_son_root) {") != NULL);
     CHECK(strstr(buf, son) != NULL);
     free(buf);
+}
+
+static void test_integration_evalpoint(void) {
+    const char* son = write_fixture("e2e.son",
+        "#define VAR dick\n"
+        "{\n"
+        "    \"important code result\": {\n"
+        "        !!\"__c__\": \"char* poo(){static char _b[32]; for(int d=0; d<999; d++){if (d==998){snprintf(_b,sizeof _b,\\\"%d\\\",d); return _b;}} return \\\"0\\\";}\"\n"
+        "    }\n"
+        "    \"assembler result\": {\n"
+        "        !!\"__asm__\": \"char* ares(){int v; __asm__ volatile (\\\"mov $42, %0\\\" : \\\"=r\\\"(v)); static char _b[16]; snprintf(_b,sizeof _b,\\\"%d\\\",v); return _b;}\"\n"
+        "    }\n"
+        "    \"a\": {\n"
+        "        !\"if(owo == \"VAR\")\": {\n"
+        "            \"text\": \"Hello owo!!\"\n"
+        "        }\n"
+        "        !\"if(1)\": {\n"
+        "            \"poop.txt\": \"microsoft\"\n"
+        "        }\n"
+        "    }\n"
+        "}\n");
+    char ass[1024];
+    snprintf(ass, sizeof ass, "%s/SONEVAL.ass", dir);
+    CHECK(cSON_gen_evalpoint(ass, son) == 1);
+
+    const char* driver_src =
+        "#define son\xF0\x9F\x98\xAD\xF0\x9F\x98\xAD\xF0\x9F\x98\xAD\xF0\x9F\x98\xAD\n"
+        "#include \"../src/cSON.h\"\n"
+        "#include \"SONEVAL.ass\"\n"
+        "#include <string.h>\n"
+        "int main(void) {\n"
+        "    char* owo = \"dick\";\n"
+        "    cSON_Obj* tree = cSON_evalpoint();\n"
+        "    const char* v = cSON_get(tree, \"important code result\");\n"
+        "    const char* a = cSON_get(tree, \"assembler result\");\n"
+        "    const cSON_Obj* aobj = cSON_find(tree, \"a\");\n"
+        "    const char* p = aobj ? cSON_get(aobj, \"poop.txt\") : NULL;\n"
+        "    return (v && strcmp(v, \"998\") == 0 && a && strcmp(a, \"42\") == 0 && p && strcmp(p, \"microsoft\") == 0) ? 0 : 1;\n"
+        "}\n";
+    const char* driver_path = write_fixture("driver.c", driver_src);
+    char bin[1024];
+    snprintf(bin, sizeof bin, "%s/driver", dir);
+    char cmd[2048];
+    snprintf(cmd, sizeof cmd, "cc -std=c2x -o %s %s 2>%s/driver.err", bin, driver_path, dir);
+    if (system(cmd) != 0) {
+        char errpath[1024];
+        snprintf(errpath, sizeof errpath, "%s/driver.err", dir);
+        char* err = read_file(errpath);
+        fprintf(stderr, "e2e compile failed:\n%s\n", err ? err : "(no stderr)");
+        free(err);
+        CHECK(0);
+    } else {
+        snprintf(cmd, sizeof cmd, "%s", bin);
+        CHECK(system(cmd) == 0);
+    }
 }
 
 static void test_empty(void) {
@@ -371,7 +516,12 @@ int main(void) {
     test_apply_if_unfold();
     test_apply_if_delete();
     test_apply_if_out_of_range();
+    test_if_siblings();
+    test_if_siblings_apply();
+    test_apply_inline_collapse();
+    test_apply_inline_no_collapse();
     test_gen_evalpoint();
+    test_integration_evalpoint();
     test_empty();
     test_missing();
 

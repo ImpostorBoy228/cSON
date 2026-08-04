@@ -5,7 +5,8 @@ i am asshole ;<- should ignore
     "emm": {
         "f1": "lol"
         "f2": "bubububu"
-	"important code result": { !!"__c__": "int poo(){for(int d=0; d<999; d++){if (d==998) return d;}return 0;}" }
+	"important code result": { !!"__c__": "char* poo(){static char _b[32]; for(int d=0; d<999; d++){if (d==998){snprintf(_b,sizeof _b,\"%d\",d); return _b;}} return \"0\";}" }
+"assembler result"      :   { !!"__asm__": "char* ares(){int v; __asm__ volatile (\"mov $42, %0\" : \"=r\"(v)); static char _b[16]; snprintf(_b,sizeof _b,\"%d\",v); return _b;}" }
         "cock": "VAR" ; smart comment
     }
     "a": {
