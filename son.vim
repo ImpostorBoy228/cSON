@@ -10,13 +10,13 @@ syn region sonValue   start='"' skip='\\"' end='"'
 syn match sonKey      '"[^"]*"\s*:'
 syn match sonBrace    '[{}]'
 
-hi def sonComment ctermfg=245 guifg=#8a8a8a
-hi def sonMacro   ctermfg=2   guifg=#00af5f
-hi def link sonKey     Identifier
-hi def link sonValue   String
-hi def link sonIf      Statement
-hi def sonSpecial ctermfg=124 guifg=#e03050
-hi def sonBrace   ctermfg=7   guifg=#ffffff
+hi def link sonComment  Comment
+hi def link sonMacro    Type
+hi def link sonKey      Special
+hi def link sonValue    String
+hi def link sonIf       Conditional
+hi def link sonSpecial  Special
+hi def link sonBrace    Delimiter
 
 let b:current_syntax = "son"
 
