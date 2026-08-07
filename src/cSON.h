@@ -1,5 +1,6 @@
-#ifndef CSON_H
-#define CSON_H
+#pragma once
+
+// This code is so clean I feel sick
 
 #ifdef __cplusplus
 extern "C" {
@@ -664,5 +665,3 @@ int cSON_gen_evalpoint(const char* out_path, const char* son_path) {
 #ifdef __cplusplus
 }
 #endif
-
-#endif /* CSON_H */

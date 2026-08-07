@@ -1,0 +1,19 @@
+;comment
+i am asshole ;<- should ignore
+#define VAR dick
+{
+    "emm": {
+        "f1": "lol"
+        "f2": "bubububu"
+	"important code result": { !!"__lua__": "return '998'" }
+"assembler result"      :   { !!"__lua__": "return 42" }
+        "cock": "VAR" ; smart comment
+    }
+    "a": {
+        !"if(owo == "VAR")": {
+            "text": "Hello owo!!"
+        }
+        !"if(1)": {"poop.txt": "microsoft"}
+    }
+    fuck microsft ;<- should ignore
+}

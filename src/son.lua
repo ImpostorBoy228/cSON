@@ -1,9 +1,3 @@
--- son.lua — a great json alternative. why son? json was father
--- runtime version for Lua 5.4: parse + eval, no C codegen.
---
---   local son = require("son")
---   local tree = son.eval_file("config.son", { owo = "dick" })
---   print(son.get(tree, "f1"))
 local son = {}
 
 local CSON_OBJECT = "object"
@@ -95,20 +89,20 @@ local function parse_string(text, macros)
         elseif c == 33 then -- !
             if text:byte(i + 1) == 33 then -- !!
                 local q = i + 2
-                if text:byte(q) == 34 then q = q + 1 end
-                while q <= n and text:byte(q) ~= 34 and text:byte(q) ~= 10 do q = q + 1 end
+                if text:byte(q) == 34 then q = q + 1 end -- "
+                while q <= n and text:byte(q) ~= 34 and text:byte(q) ~= 10 do q = q + 1 end -- neither " nor \n
                 pending_kind = CSON_INLINE
                 i = q + 1
-            else
+            else -- !
                 local q = i + 2
                 local start = q
                 while q <= n do
                     local b = text:byte(q)
-                    if b == 34 then
+                    if b == 34 then -- "
                         local j = q + 1
                         while j <= n and is_ws(text:byte(j)) do j = j + 1 end
-                        if j <= n and text:byte(j) == 58 then break end
-                    elseif b == 10 then
+                        if j <= n and text:byte(j) == 58 then break end -- :
+                    elseif b == 10 then -- \n
                         break
                     end
                     q = q + 1
@@ -120,7 +114,7 @@ local function parse_string(text, macros)
                 ifopen = o
                 i = q + 1
             end
-        elseif c == 34 then
+        elseif c == 34 then -- "
             local buf, idx = read_string(text, i)
             local j = idx + 1
             while j <= n and is_ws(text:byte(j)) do j = j + 1 end

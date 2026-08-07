@@ -27,7 +27,10 @@ $(TEST): tests/test.c $(HDR)
 clean:
 	rm -f $(BIN) $(TEST) $(EVAL) .gen-soneval
 
-tests: $(TEST)
+tests: $(TEST) luatests
 	./$(TEST)
 
-.PHONY: all clean tests SonCompiler
+luatests:
+	lua tests/test.lua
+
+.PHONY: all clean tests luatests SonCompiler
