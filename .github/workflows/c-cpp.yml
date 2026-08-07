@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - name: lua
+      run: apt-get install lua
     - name: make
       run: make
     - name: make tests
