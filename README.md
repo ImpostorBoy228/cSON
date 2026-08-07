@@ -1,5 +1,7 @@
 ## son😭😭😭😭
 ### a great json alternative. Why son? json was father😭😭😭
+## TODO
+functions for changing nodes & writing files 
 
 ### contents (click the shit)
 - [features](#features)
